@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeThere</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & Dependencies -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3E8FF; /* Light purple background from mockups */
+            color: #3B0764; /* Dark purple text */
+        }
+
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#581c87', // purple-900
+                        secondary: '#d8b4fe', // purple-300
+                        accent: '#7e22ce', // purple-700
+                        danger: '#ef4444', // red-500
+                        surface: '#ffffff',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useContext, createContext, useMemo } = React;
+
+        // --- ICONS (Inline SVGs to avoid CDN issues) ---
+        const IconWrapper = ({ children, size = 24, className = "" }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {children}
+            </svg>
+        );
+
+        const Home = (props) => <IconWrapper {...props}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></IconWrapper>;
+        const Search = (props) => <IconWrapper {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconWrapper>;
+        const Plus = (props) => <IconWrapper {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconWrapper>;
+        const User = (props) => <IconWrapper {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconWrapper>;
+        const ArrowLeft = (props) => <IconWrapper {...props}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></IconWrapper>;
+        const MoreVertical = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></IconWrapper>;
+        const MapPin = (props) => <IconWrapper {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconWrapper>;
+        const Calendar = (props) => <IconWrapper {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconWrapper>;
+        const Clock = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconWrapper>;
+        const Heart = (props) => <IconWrapper {...props}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></IconWrapper>;
+        const MessageSquare = (props) => <IconWrapper {...props}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconWrapper>;
+        const ThumbsUp = (props) => <IconWrapper {...props}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></IconWrapper>;
+        const Flag = (props) => <IconWrapper {...props}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></IconWrapper>;
+        const FileText = (props) => <IconWrapper {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></IconWrapper>;
+        const Edit = (props) => <IconWrapper {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></IconWrapper>;
+        const Trash2 = (props) => <IconWrapper {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconWrapper>;
+        const AlertTriangle = (props) => <IconWrapper {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconWrapper>;
+        const XIcon = (props) => <IconWrapper {...props}><path d="M18 6 6 18"/><path d="m6 6 18 18"/></IconWrapper>;
+        const Check = (props) => <IconWrapper {...props}><polyline points="20 6 9 17 4 12"/></IconWrapper>;
+        const Send = (props) => <IconWrapper {...props}><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></IconWrapper>;
+        const Pin = (props) => <IconWrapper {...props}><line x1="12" x2="12" y1="17" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></IconWrapper>;
+        const FilterIcon = (props) => <IconWrapper {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconWrapper>;
+
+        // --- API CONFIGURATION ---
+        // In index.html
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080' 
+            : 'https://se-2-back.onrender.com';
+        
+        // --- CONSTANTS ---
+        const CATEGORIES = ['Party','Concert','Bazaar','Movie Night','Competition','Workshop','Food Event','Other'];
+        const AGE_GROUPS = ['Everyone','Teens','Adults'];
+
+        // --- CONTEXTS ---
+        const AuthContext = createContext(null);
+        const RouterContext = createContext(null);
+
+        // --- MOCK USERS FOR DEV TOOL ---
+        const DEV_USERS = [
+            { id: 'u1', username: 'spyros', name: 'Kougias Spyros (Admin)', isAdmin: true },
+            { id: 'u2', username: 'giannis', name: 'Papadopoulos Giannis', isAdmin: false },
+            { id: 'u3', username: 'george', name: 'Hadjilyras Giorgos', isAdmin: false },
+        ];
+
+        // --- COMPONENTS ---
+
+        // 1. Button
+        const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon }) => {
+            const baseStyle = "flex items-center justify-center px-4 py-2 rounded-xl font-medium transition-all active:scale-95";
+            const variants = {
+                primary: "bg-primary text-white shadow-lg shadow-purple-200",
+                secondary: "bg-surface text-primary border border-purple-100",
+                danger: "bg-danger text-white",
+                ghost: "bg-transparent text-primary hover:bg-purple-100"
+            };
+
+            return (
+                <button onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`}>
+                    {Icon && <Icon size={18} className="mr-2" />}
+                    {children}
+                </button>
+            );
+        };
+
+        // 2. Input
+        const Input = ({ label, value, onChange, type = "text", multiline = false, placeholder }) => {
+            const baseClass = "w-full bg-surface border-none rounded-xl p-4 text-primary placeholder-purple-300 focus:ring-2 focus:ring-primary outline-none shadow-sm";
+            return (
+                <div className="mb-4">
+                    {label && <label className="block text-sm font-semibold mb-2 ml-1">{label}</label>}
+                    {multiline ? (
+                        <textarea 
+                            className={`${baseClass} min-h-[100px] resize-none`} 
+                            value={value} 
+                            onChange={e => onChange(e.target.value)}
+                            placeholder={placeholder}
+                        />
+                    ) : (
+                        <input 
+                            type={type}
+                            className={baseClass}
+                            value={value}
+                            onChange={e => onChange(e.target.value)}
+                            placeholder={placeholder}
+                        />
+                    )}
+                </div>
+            );
+        };
+
+        // 3. Modal (Generic)
+        const Modal = ({ isOpen, onClose, title, children, actions }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm fade-in p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden slide-up">
+                        <div className="p-6 text-center">
+                            {title && <h3 className="text-xl font-bold mb-4">{title}</h3>}
+                            <div className="mb-6 text-gray-600">{children}</div>
+                            <div className="flex gap-3 justify-center">
+                                {actions}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 4. Options Menu (M-32)
+        const OptionsMenu = ({ isOpen, onClose, options }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-40 z-[60] flex items-end sm:items-center justify-center bg-black/20 fade-in" onClick={onClose}>
+                    <div className="bg-white/90 backdrop-blur-md w-64 rounded-2xl shadow-xl p-2 m-4 mb-20 slide-up" onClick={e => e.stopPropagation()}>
+                        {options.map((opt, idx) => (
+                            <button 
+                                key={idx}
+                                onClick={() => { opt.action(); onClose(); }}
+                                className={`w-full text-left px-4 py-3 rounded-xl flex items-center gap-3 font-medium transition-colors ${opt.danger ? 'text-red-500 hover:bg-red-50' : 'text-primary hover:bg-purple-50'}`}
+                            >
+                                {opt.icon && <opt.icon size={18} />}
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // 5. Bottom Navigation
+        const BottomNav = () => {
+            const { navigate, currentRoute } = useContext(RouterContext);
+            
+            return (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white rounded-full h-16 shadow-2xl flex items-center justify-around px-6 z-40">
+                    <button onClick={() => navigate('BACK')} className="p-3 text-primary hover:bg-purple-50 rounded-full transition-colors">
+                        <ArrowLeft size={24} />
+                    </button>
+                    <button onClick={() => navigate('HOME')} className={`p-4 -mt-8 rounded-full shadow-lg transition-all ${currentRoute === 'HOME' ? 'bg-primary text-white scale-110' : 'bg-primary text-white'}`}>
+                        <Home size={24} />
+                    </button>
+                    <button onClick={() => navigate('PROFILE_ME')} className={`p-3 rounded-full transition-colors ${currentRoute === 'PROFILE_ME' ? 'text-primary bg-purple-50' : 'text-gray-400'}`}>
+                        <User size={24} />
+                    </button>
+                </div>
+            );
+        };
+
+        // --- PAGES ---
+
+        // 1. Home (M-20)
+        const HomePage = () => {
+            const { navigate } = useContext(RouterContext);
+            const { user } = useContext(AuthContext);
+            const [events, setEvents] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchEvents();
+            }, []);
+
+            const fetchEvents = async () => {
+                try {
+                    // Use the CD-4 compliant endpoint
+                    const res = await axios.get(`${API_URL}/event/recommended/${user?.username || ''}`);
+                    setEvents(Array.isArray(res.data.data) ? res.data.data : []);
+                } catch (err) {
+                    console.error("Failed to fetch events", err);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const renderTags = (tags) => {
+                const displayTags = Array.isArray(tags) ? tags : (typeof tags === 'string' ? [tags] : []);
+                
+                const joinedTags = displayTags.map(tag => {
+                    return tag.charAt(0).toUpperCase() + tag.slice(1);
+                }).join(' / ');
+
+                if (!joinedTags) return null;
+                
+                return (
+                    <span className="text-[10px] bg-purple-50 text-primary px-2 py-1 rounded-full">
+                        {joinedTags}
+                    </span>
+                );
+            };
+
+            return (
+                <div className="pb-24 px-6 pt-12">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h1 data-testid ="BeThere-Title" className="text-3xl font-bold text-primary">BeThere</h1>
+                            <p data-testid ="Hello-User" className="text-sm text-purple-600">Welcome back, {user ? user.name.split(' ')[0] : 'Guest'}!</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border-2 border-white shadow-sm">
+                            {user ? user.username[0].toUpperCase() : '?'}
+                        </div>
+                    </div>
+
+                    {/* Jump back in card */}
+                    <div className="w-full h-48 bg-gradient-to-br from-primary to-accent rounded-3xl shadow-lg mb-8 flex items-end p-6 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Calendar size={120} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold mb-1">Jump back in!</h2>
+                            <p className="text-purple-100 text-sm">Here's something you might find interesting.</p>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                        <button data-testid = "Button-To-CreateEvent"
+                            onClick={() => navigate('CREATE_EVENT')}
+                            className="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:shadow-md transition-all"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-primary">
+                                <Plus size={24} />
+                            </div>
+                            <span className="font-semibold text-sm text-primary">Create Event</span>
+                        </button>
+                        <button data-testid = "Button-To-Search"
+                            onClick={() => navigate('SEARCH')}
+                            className="bg-white p-4 rounded-2xl shadow-sm flex flex-col items-center justify-center gap-2 hover:shadow-md transition-all"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-primary">
+                                <Search size={24} />
+                            </div>
+                            <span className="font-semibold text-sm text-primary">Search</span>
+                        </button>
+                    </div>
+
+                    {/* Events List */}
+                    <h3  className="text-lg font-bold text-primary mb-4">Recommended For You</h3>
+                    <div className="space-y-4">
+                        {loading ? <p>Loading...</p> : events.map(evt => (
+                            <div 
+                                key={evt.id} 
+                                onClick={() => navigate('EVENT_DETAILS', { id: evt.id })}
+                                className="bg-white p-4 rounded-2xl shadow-sm flex gap-4 items-center cursor-pointer hover:scale-[1.02] transition-transform"
+                            >
+                                <div className="w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center text-primary shrink-0">
+                                    <Calendar size={24} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-primary truncate">{evt.name}</h4>
+                                    <p className="text-xs text-gray-500 truncate">{evt.description}</p>
+                                    <div className="flex gap-2 mt-2">
+                                        {renderTags(evt.category || [])}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {events.length === 0 && !loading && <p className="text-center text-gray-400 py-8">No events found.</p>}
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. Event Details (M-31, M-32, M-37)
+        const EventDetails = () => {
+            const { params, navigate } = useContext(RouterContext);
+            const { user } = useContext(AuthContext);
+            const [event, setEvent] = useState(null);
+            const [showOptions, setShowOptions] = useState(false);
+            const [showDeleteModal, setShowDeleteModal] = useState(false);
+            const [showCommentInput, setShowCommentInput] = useState(false);
+            const [commentText, setCommentText] = useState("");
+
+            useEffect(() => {
+                if (params.id) fetchEvent();
+            }, [params.id]);
+
+            const fetchEvent = async () => {
+                try {
+                    const res = await axios.get(`${API_URL}/event/${params.id}`);
+                    if (res.data.success) setEvent(res.data.data);
+                } catch (err) {
+                    console.error(err);
+                }
+            };
+
+            const handleInterest = async () => {
+                try {
+                    await axios.put(`${API_URL}/event/${event.id}/interested`, {}, { headers: { 'x-username': user.username }});
+                    fetchEvent();
+                } catch(err) { alert(err.response?.data?.message || "Error"); }
+            };
+
+            const handleVouch = async () => {
+                try {
+                    await axios.put(`${API_URL}/event/${event.id}/vouch`, {}, {
+                        headers: { 'x-username': user.username }
+                    });
+                    fetchEvent();
+                } catch(err) {
+                    alert(err.response?.data?.message || 'Error');
+                }
+            };
+
+            const handleDelete = async () => {
+                try {
+                    // Matches M-37 flow
+                    await axios.delete(`${API_URL}/event/${event.id}?confirmed=true`, { headers: { 'x-username': user.username }});
+                    navigate('HOME');
+                } catch(err) { alert(err.response?.data?.message || "Error"); }
+            };
+
+            const handlePostComment = async () => {
+                if (!commentText || commentText.trim() === "") {
+                    alert("Comment text is required");
+                    return;
+                }
+                try {
+                    await axios.post(`${API_URL}/event/${event.id}/comment`, { text: commentText }, { headers: { 'x-username': user.username }});
+                    setCommentText("");
+                    setShowCommentInput(false);
+                    fetchEvent();
+                } catch(err) { alert(err.response?.data?.message || "Error"); }
+            };
+
+            const handlePinComment = async (commentId, isPinned) => {
+                try {
+                    // Toggle pin status
+                    await axios.put(
+                        `${API_URL}/event/${event.id}/comment/${commentId}/pin`, 
+                        { pin: !isPinned },
+                        { headers: { 'x-username': user.username }}
+                    );
+                    fetchEvent();
+                } catch(err) {
+                    alert(err.response?.data?.message || "Error");
+                }
+            };
+
+            const handleDeleteComment = async (commentId) => {
+                if(!confirm("Delete this comment?")) return;
+                try {
+                    await axios.delete(`${API_URL}/event/${event.id}/comment/${commentId}`, { headers: { 'x-username': user.username }});
+                    fetchEvent();
+                } catch(err) { alert(err.response?.data?.message || "Error"); }
+            };
+
+            if (!event) return <div className="p-10 text-center">Loading...</div>;
+
+            const isHost = user.id === event.host;
+            const isInterested = event.interestedIn.includes(user?.id);
+            const hasVouched = event.vouchers?.map(v => v.toString()).includes(user?.id);
+
+            // Permissions:
+            const canEditOrAnnounce = isHost;
+            const canDelete = isHost || user?.isAdmin;
+            const canReport = !isHost;
+
+            let menuOptions = [
+                { label: hasVouched ? 'Vouched' : 'Vouch', icon: ThumbsUp, action: handleVouch },
+            ];
+
+            // Add Report options if the user is NOT the host
+            if (canReport) {
+                menuOptions.push({ label: 'Report Event', icon: Flag, action: () => navigate('REPORT', { targetType: 'Event', targetId: event.name }) });
+                menuOptions.push({ label: 'Report Host', icon: Flag, action: () => navigate('REPORT', { targetType: 'User', targetId: event.host }) });
+            }
+
+            // Add Host Only actions
+            if (canEditOrAnnounce) {
+                menuOptions.push({ label: 'Announcement', icon: FileText, action: () => navigate('ANNOUNCEMENT', { eventId: event.id }) });
+                menuOptions.push({ label: 'Edit Event', icon: Edit, action: () => navigate('EDIT_EVENT', { event }) });
+            }
+
+            // Add Host or Admin actions
+            if (canDelete) {
+                menuOptions.push({ label: 'Delete Event', icon: Trash2, danger: true, action: () => setShowDeleteModal(true) });
+            }
+
+            const categories = Array.isArray(event.category) ? event.category : [event.category].filter(Boolean);
+            const ageGroups = Array.isArray(event.ageGroup) ? event.ageGroup : [event.ageGroup].filter(Boolean);
+
+            return (
+                <div className="pb-24 bg-surface min-h-screen">
+                    {/* Header Image Area */}
+                    <div className="h-72 bg-purple-200 relative rounded-b-[3rem] shadow-lg overflow-hidden">
+                        <div className="absolute inset-0 flex items-center justify-center opacity-20 text-primary">
+                            <Calendar size={120} strokeWidth={1} />
+                        </div>
+                        {/* Top Nav overlay */}
+                        <div className="absolute top-6 left-0 right-0 px-6 flex justify-between z-10">
+                             <button onClick={() => setShowCommentInput(true)} className="w-10 h-10 bg-primary/20 backdrop-blur-md rounded-full flex items-center justify-center text-primary">
+                                <MessageSquare size={20} />
+                             </button>
+                             <button onClick={() => setShowOptions(true)} className="w-10 h-10 bg-primary/20 backdrop-blur-md rounded-full flex items-center justify-center text-primary">
+                                <MoreVertical size={20} />
+                             </button>
+                        </div>
+                        <div className="absolute bottom-6 left-0 right-0 text-center">
+                            <h1 className="text-3xl font-bold text-primary drop-shadow-sm">{event.name}</h1>
+                            <button 
+                                onClick={handleInterest}
+                                className={`mt-3 px-6 py-2 rounded-full text-sm font-bold transition-all ${
+                                    isInterested ? 'bg-accent text-white' : 'bg-white text-primary shadow-md'
+                                }`}
+                            >
+                                {isInterested ? 'Interested ★' : 'Show Interest ☆'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Details Body */}
+                    <div className="px-6 pt-8">
+                        <div className="bg-purple-50 p-6 rounded-3xl mb-6">
+                            <h3 className="text-sm font-bold text-gray-400 mb-2 uppercase tracking-wide">Description</h3>
+                            <p className="text-primary leading-relaxed">{event.description}</p>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-3 mb-8">
+                            {ageGroups.map((group, index) => (
+                                <div key={`age-${index}`} className="px-4 py-2 bg-primary text-white rounded-xl flex items-center gap-2 text-sm font-medium capitalize">
+                                    <User size={16} /> {group}
+                                </div>
+                            ))}
+                           {categories.map((cat, index) => (
+                                <div key={`cat-${index}`} className="px-4 py-2 bg-accent text-white rounded-xl flex items-center gap-2 text-sm font-medium capitalize">
+                                    <FileText size={16} /> {cat}
+                                </div>
+                            ))}
+                            <div className="px-4 py-2 bg-purple-900 text-white rounded-xl flex items-center gap-2 text-sm font-medium">
+                                $ {event.price}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-purple-800 bg-white p-4 rounded-2xl shadow-sm mb-8">
+                            <MapPin />
+                            <span className="font-medium">{event.location.join(', ')}</span>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-4 border-t border-purple-100 pt-6">
+                            <span className="text-sm font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-md">
+                                {new Date(event.date).toLocaleDateString()}
+                            </span>
+                            <span className="text-sm font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-md">
+                                {new Date(event.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                        </div>
+
+                        {/* Comments Section */}
+                        <div className="mt-8">
+                            <h3 className="text-xl font-bold text-primary mb-4">Comments</h3>
+                            <div className="space-y-3">
+                                {event.commentsData?.map((c) => {
+                                    const isPinned = c.isPinned;
+                                    const canPin = isHost;
+                                    const canDelete = isHost || user?.isAdmin || c.poster === user.id;
+
+                                    return (
+                                        <div
+                                            key={c._id}
+                                            className={`p-4 rounded-2xl flex gap-3 items-start ${
+                                                isPinned ? 'bg-yellow-50 border border-yellow-200' : 'bg-white shadow-sm'
+                                            }`}
+                                        >
+                                            {/* Poster Avatar */}
+                                            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-xs font-bold shrink-0">
+                                                {c.poster[0].toUpperCase()}
+                                            </div>
+
+                                            {/* Comment Content */}
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="font-bold text-xs text-primary mb-1 block">{c.poster}</span>
+                                                    <div className="flex gap-2">
+                                                        {/* Host/Admin Pin/Unpin Button */}
+                                                        {canPin && (
+                                                            <button
+                                                                onClick={() => handlePinComment(c._id, c.isPinned)}
+                                                                className={`flex items-center justify-center w-6 h-6 rounded-full border transition-colors ${
+                                                                    isPinned
+                                                                        ? 'bg-yellow-200 text-yellow-600 hover:bg-yellow-300'
+                                                                        : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                                                                }`}
+                                                                title={isPinned ? 'Unpin Comment' : 'Pin Comment'}
+                                                            >
+                                                                <Pin size={14} />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Delete button for host/admin/comment owner */}
+                                                        {(canDelete) && (
+                                                            <button
+                                                                onClick={() => handleDeleteComment(c._id)}
+                                                                className="flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                                                                title="Delete Comment"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm text-gray-600">{c.text}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {event.commentsData?.length === 0 && (
+                                    <p className="text-center text-gray-400 py-4">No comments yet. Be the first to comment!</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Modal Overlays */}
+                    <OptionsMenu isOpen={showOptions} onClose={() => setShowOptions(false)} options={menuOptions} />
+                    
+                    {/* Delete Event Confirmation (M-37) */}
+                    <Modal 
+                        isOpen={showDeleteModal} 
+                        title="Are you sure you want to delete the event?"
+                        actions={
+                            <>
+                                <Button variant="primary" onClick={() => setShowDeleteModal(false)}>No</Button>
+                                <Button variant="danger" onClick={handleDelete}>Yes</Button>
+                            </>
+                        } 
+                    />
+
+                    {/* Comment Input (M-33) */}
+                    {showCommentInput && (
+                        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 fade-in">
+                            <div className="bg-primary rounded-[2rem] p-6 w-full max-w-sm text-center shadow-2xl slide-up">
+                                <div className="w-16 h-16 bg-purple-100 rounded-2xl mx-auto mb-4 flex items-center justify-center text-primary">
+                                    <MessageSquare size={32} />
+                                </div>
+                                <h3 className="text-white text-xl font-bold mb-4">Write a Comment!</h3>
+                                <textarea 
+                                    className="w-full h-32 rounded-xl p-4 bg-purple-50 text-primary outline-none mb-2 resize-none" 
+                                    placeholder="Your comment..."
+                                    value={commentText}
+                                    onChange={e => setCommentText(e.target.value)}
+                                />
+                                <p className="text-purple-200 text-xs italic mb-6">Please, keep it respectful.</p>
+                                <div className="flex gap-4">
+                                    <Button variant="secondary" className="flex-1 bg-white/10 text-white border-none hover:bg-white/20" onClick={() => setShowCommentInput(false)}>
+                                        Cancel <XIcon size={16} className="ml-1"/>
+                                    </Button>
+                                    <Button variant="primary" className="flex-1 bg-accent" onClick={handlePostComment}>
+                                        Post <Send size={16} className="ml-1"/>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 3. Search Page (M-21, M-23)
+        const SearchPage = () => {
+            const { navigate } = useContext(RouterContext);
+            const [query, setQuery] = useState("");
+            const [results, setResults] = useState({ events: [], users: [] });
+            const [hasSearched, setHasSearched] = useState(false);
+
+            const handleSearch = async () => {
+                if(!query) return;
+                try {
+                    const res = await axios.get(`${API_URL}/search?searchText=${query}`);
+                    setResults(res.data.data);
+                    setHasSearched(true);
+                } catch (err) { console.error(err); }
+            };
+
+            return (
+                <div className="px-6 pt-12 pb-24 min-h-screen bg-surface">
+                    {/* M-21 Search Bar */}
+                    <div className="relative flex items-center gap-3 mb-6">
+                        <div className="relative flex-1">
+                            <input 
+                                type="text" 
+                                className="w-full bg-purple-50 rounded-full py-3 px-6 text-primary placeholder-purple-300 shadow-inner outline-none"
+                                placeholder="Search"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                            />
+                            {query && <button onClick={() => setQuery('')} className="absolute right-4 top-3.5 text-purple-400"><XIcon size={16}/></button>}
+                        </div>
+                        <button data-testid="search-submit-btn" className="bg-primary text-white p-3 rounded-full shadow-lg" onClick={handleSearch}>
+                            <FilterIcon size={20} />
+                        </button>
+                    </div>
+
+                    {!hasSearched ? (
+                        <div className="text-center mt-20 opacity-50">
+                            <p className="text-primary italic">What's on your mind today?</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6 fade-in">
+                            {/* M-23 Results */}
+                            <div>
+                                <h3 className="text-xs font-bold text-purple-900 uppercase tracking-wider mb-3 ml-1">Events</h3>
+                                <div className="space-y-3">
+                                    {results.events.map(evt => (
+                                        <div key={evt.id} onClick={() => navigate('EVENT_DETAILS', {id: evt.id})} className="bg-white p-4 rounded-2xl shadow-sm flex gap-4 items-center">
+                                            <div className="w-12 h-12 rounded-xl border-2 border-primary flex items-center justify-center text-primary"><Calendar size={20}/></div>
+                                            <div>
+                                                <h4 className="font-bold text-primary">{evt.name}</h4>
+                                                <p className="text-xs text-gray-400 truncate w-48">{evt.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-xs font-bold text-purple-900 uppercase tracking-wider mb-3 ml-1">Users</h3>
+                                <div className="space-y-3">
+                                    {results.users.map(u => (
+                                        <div key={u.username} onClick={() => navigate('USER_PROFILE', {username: u.username})} className="bg-white p-4 rounded-2xl shadow-sm flex gap-4 items-center">
+                                            <div className="w-12 h-12 rounded-full border-2 border-primary flex items-center justify-center text-primary"><User size={20}/></div>
+                                            <div>
+                                                <h4 className="font-bold text-primary">{u.name}</h4>
+                                                <p className="text-xs text-gray-400">@{u.username}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 4. Create/Edit Event (M-38)
+        const EventForm = ({ mode = 'create' }) => {
+            const { navigate, params } = useContext(RouterContext);
+            const { user } = useContext(AuthContext);
+            
+            const [formData, setFormData] = useState({
+                name: '', date: '', price: 0, location: '', description: '', category: [], ageGroup: []
+            });
+
+            const toggleSelection = (key, value) => {
+                setFormData(prevData => {
+                    const currentArray = prevData[key];
+                    if (currentArray.includes(value)) {
+                        return { ...prevData, [key]: currentArray.filter(item => item !== value) };
+                    } else {
+                        return { ...prevData, [key]: [...currentArray, value] };
+                    }
+                });
+            };
+
+            useEffect(() => {
+                if (mode === 'edit' && params.event) {
+                    const e = params.event;
+                    const initialCategory = Array.isArray(e.category) ? e.category : [e.category].filter(Boolean);
+                    const initialAgeGroup = Array.isArray(e.ageGroup) ? e.ageGroup : [e.ageGroup].filter(Boolean);
+
+                    setFormData({
+                        name: e.name,
+                        date: new Date(e.date).toISOString().slice(0, 16), // Format for datetime-local
+                        price: e.price,
+                        location: e.location.join(','),
+                        description: e.description,
+                        ageGroup: initialAgeGroup,
+                        category: initialCategory
+                    });
+                }
+
+                if (mode === 'create' && formData.category.length === 0) {
+                     setFormData(prevData => ({ ...prevData, category: ['Other'], ageGroup: ['Everyone'] }));
+                }
+
+            }, [mode]);
+
+            const handleSubmit = async () => {
+                try {
+                    const finalCategory = formData.category.filter(c => c);
+                    const finalAgeGroup = formData.ageGroup.filter(a => a);
+
+                    if (finalCategory.length === 0 || finalAgeGroup.length === 0) {
+                        alert("You must select at least one Category and one Age Group.");
+                        return;
+                    }
+
+                    const payload = {
+                        ...formData,
+                        location: formData.location.split(',').map(Number), // Mock parsing
+                        category: finalCategory,
+                        ageGroup: finalAgeGroup
+                    };
+                    
+                    if (mode === 'create') {
+                        await axios.post(`${API_URL}/event`, payload, { headers: { 'x-username': user.username }});
+                    } else {
+                        await axios.put(`${API_URL}/event/${params.event.id}`, payload, { headers: { 'x-username': user.username }});
+                    }
+                    navigate('HOME');
+                } catch (err) { alert("Error saving event"); }
+            };
+
+            return (
+                <div className="px-6 pt-8 pb-24 min-h-screen bg-surface">
+                    <div className="flex justify-between items-center mb-6">
+                         <h2 className="text-2xl font-bold text-primary">{mode === 'create' ? 'New Event' : 'Edit Event'}</h2>
+                         <button onClick={handleSubmit} className="bg-accent text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-1">
+                            <Check size={16} /> Done
+                         </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Input data-testid = "New-Event-Name" label="Event Name" placeholder="Insert Name..." value={formData.name} onChange={v => setFormData({...formData, name: v})} />
+                        
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <Input label="Date & Time" type="datetime-local" value={formData.date} onChange={v => setFormData({...formData, date: v})} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 items-center">
+                            <div className="flex-1">
+                                <Input label="Price ($)" type="number" value={formData.price} onChange={v => setFormData({...formData, price: v})} />
+                            </div>
+                            {/* Image Placeholder */}
+                            <div className="w-24 h-24 border-2 border-primary rounded-xl flex flex-col items-center justify-center text-primary bg-purple-50">
+                                <Plus size={24} />
+                                <span className="text-[10px]">Photos</span>
+                            </div>
+                        </div>
+
+                        <Input label="Location (lat, long)" placeholder="40.6, 22.9" value={formData.location} onChange={v => setFormData({...formData, location: v})} />
+                        
+                        <Input label="Description" multiline placeholder="Insert Description..." value={formData.description} onChange={v => setFormData({...formData, description: v})} />
+
+                        <div>
+                            <label className="block text-sm font-semibold mb-2 ml-1 text-primary">Category (Select one or more)</label>
+                            <div className="flex flex-wrap gap-2">
+                                {CATEGORIES.map(cat => (
+                                    <button 
+                                        key={cat}
+                                        onClick={() => toggleSelection('category', cat)}
+                                        className={`px-3 py-1 rounded-lg text-sm capitalize transition-colors ${
+                                            formData.category.includes(cat) ? 'bg-primary text-white scale-105 shadow-md' : 'bg-purple-100 text-primary hover:bg-purple-200'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-4">
+                            <label className="block text-sm font-semibold mb-2 ml-1 text-primary">Age Group (Select one or more)</label>
+                            <div className="flex flex-wrap gap-2">
+                                {AGE_GROUPS.map(group => (
+                                    <button 
+                                        key={group}
+                                        onClick={() => toggleSelection('ageGroup', group)}
+                                        className={`px-3 py-1 rounded-lg text-sm capitalize transition-colors ${
+                                            formData.ageGroup.includes(group) ? 'bg-primary text-white scale-105 shadow-md' : 'bg-purple-100 text-primary hover:bg-purple-200'
+                                        }`}
+                                    >
+                                        {group}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        
+        // 5. User Profile (M-25, M-26)
+        const UserProfile = () => {
+            const { params, navigate } = useContext(RouterContext);
+            const { user: currentUser } = useContext(AuthContext);
+            const [profile, setProfile] = useState(null);
+
+            // Determine if viewing self or other
+            const targetUsername = params.username || currentUser.username;
+            const isMe = targetUsername === currentUser.username;
+
+            const isFollowing = profile && profile.followers ? profile.followers.includes(currentUser.id) : false;
+
+            useEffect(() => {
+                const fetchProfile = async () => {
+                    const res = await axios.get(`${API_URL}/user/${targetUsername}`);
+                    setProfile(res.data.data);
+                };
+                fetchProfile();
+            }, [targetUsername]);
+
+            const handleFollow = async () => {
+                try {
+                    await axios.put(`${API_URL}/user/${profile.username}/follow`, {}, { headers: { 'x-username': currentUser.username }});
+                    
+                    setProfile(prevProfile => {
+                        const isCurrentlyFollowing = prevProfile.followers.includes(currentUser.id);
+                        let newFollowers = [...prevProfile.followers];
+
+                        if (isCurrentlyFollowing) {
+                            newFollowers = newFollowers.filter(id => id !== currentUser.id);
+                        } else {
+                            newFollowers.push(currentUser.id);
+                        }
+
+                        return { ...prevProfile, followers: newFollowers };
+                    });
+
+                } catch (err) { 
+                    alert("Follow action failed: " + err.response?.data?.message); 
+                }
+            };
+
+            const handleAction = async (action) => {
+                try {
+                    await axios.put(`${API_URL}/user/${targetUsername}/${action}`, {}, { headers: { 'x-username': currentUser.username }});
+                    alert(`${action} successful!`);
+                } catch (err) { alert("Action failed: " + err.response?.data?.message); }
+            };
+
+            if (!profile) return <div className="text-center p-10">Loading...</div>;
+
+            return (
+                <div className="pt-12 px-6 pb-24 text-center bg-surface min-h-screen">
+                    <div className="text-primary font-bold mb-8">{isMe ? 'My Profile' : `${profile.name}'s Profile`}</div>
+                    
+                    <div className="w-32 h-32 bg-primary rounded-full mx-auto mb-4 flex items-center justify-center text-white text-4xl border-4 border-purple-200 shadow-xl">
+                        {profile.username[0].toUpperCase()}
+                    </div>
+                    
+                    <h2 className="text-3xl font-bold text-primary mb-1">{profile.name}</h2>
+                    <p className="text-purple-400 text-sm mb-6">@{profile.username}</p>
+
+                    <div className="flex justify-center gap-6 mb-8">
+                        <div>
+                            <span className="block text-xl font-bold text-primary">{profile.followers.length}</span>
+                            <span className="text-sm text-gray-500">Followers</span>
+                        </div>
+                        <div>
+                            <span className="block text-xl font-bold text-primary">{profile.following.length}</span>
+                            <span className="text-sm text-gray-500">Following</span>
+                        </div>
+                    </div>
+
+                    {!isMe && (
+                         <Button 
+                            onClick={handleFollow} 
+                            className="mx-auto mb-8"
+                            variant={isFollowing ? 'secondary' : 'primary'}
+                         >
+                            {isFollowing ? 'Following ✓' : 'Follow +'}
+                         </Button>
+                    )}
+
+                    <div className="bg-white p-6 rounded-3xl shadow-sm mb-6 text-left">
+                        <h3 className="font-bold text-primary mb-4">Hosting</h3>
+                        {/* Mock hosting item */}
+                        <div className="flex gap-4 items-center p-2 hover:bg-purple-50 rounded-xl">
+                             <div className="w-12 h-12 rounded-xl border-2 border-primary flex items-center justify-center text-primary"><Calendar size={20}/></div>
+                             <div>
+                                <div className="font-bold text-primary">Summer Event</div>
+                                <div className="text-xs text-gray-400">Description...</div>
+                             </div>
+                        </div>
+                    </div>
+
+                    {/* Admin Actions (M-26) */}
+                    {!isMe && currentUser.isAdmin && (
+                        <div className="flex justify-center gap-4 mt-8">
+                            <Button variant="danger" onClick={() => handleAction('restrict')}>Restrict</Button>
+                            <Button variant="secondary" onClick={() => navigate('REPORT', { targetType: 'User', targetId: profile.username })}>Report</Button>
+                            <Button variant="danger" onClick={() => handleAction('ban')}>Ban</Button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // 6. Report & Announcement Pages (Simplified)
+        const GenericFormPage = ({ title, endpoint, fieldName, placeholder }) => {
+            const { navigate, params } = useContext(RouterContext);
+            const { user } = useContext(AuthContext);
+            const [text, setText] = useState("");
+
+            const handleSubmit = async () => {
+                try {
+                    const body = { [fieldName]: text, ...params };
+                    // Adjust payload for Report specifically
+                    if(endpoint.includes('report')) {
+                        body.sender = user.username;
+                        body.text = text;
+                        if(params.targetType === 'User') body.reportedUser = params.targetId;
+                        else body.reportedEvent = params.targetId;
+                    }
+                    
+                    await axios.post(`${API_URL}${endpoint}`, body, { headers: { 'x-username': user.username }});
+                    alert("Sent!");
+                    navigate('BACK');
+                } catch (err) { alert("Error"); }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-primary flex flex-col items-center justify-center p-6 text-center">
+                    <div className="bg-purple-100 p-4 rounded-3xl mb-4 text-primary">
+                        {endpoint.includes('report') ? <AlertTriangle size={48} /> : <FileText size={48} />}
+                    </div>
+                    <h1 className="text-white text-3xl font-bold mb-6">{title}</h1>
+                    <textarea 
+                        className="w-full h-40 rounded-2xl p-4 mb-6 resize-none outline-none"
+                        placeholder={placeholder}
+                        value={text}
+                        onChange={e => setText(e.target.value)}
+                    />
+                    <div className="flex gap-4 w-full max-w-xs">
+                        <Button variant="secondary" className="flex-1 bg-white/20 text-white border-none" onClick={() => navigate('BACK')}>Cancel</Button>
+                        <Button variant="primary" className="flex-1 bg-accent" onClick={handleSubmit}>Send</Button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP CONTROLLER ---
+        const App = () => {
+        // FIXED Router State: History now stores { route, params } objects
+            const [history, setHistory] = useState([{ route: 'HOME', params: {} }]);
+            const [route, setRoute] = useState('HOME');
+            const [params, setParams] = useState({});
+            const [user, setUser] = useState(DEV_USERS[0]);
+
+            const navigate = (newRoute, newParams = {}) => {
+                if (newRoute === 'BACK') {
+                    const newHistory = [...history];
+                    // Only pop if we have somewhere to go back to
+                    if (newHistory.length > 1) {
+                        newHistory.pop();
+                    }
+                    
+                    // Get the previous page state
+                    const prevState = newHistory[newHistory.length - 1];
+                    
+                    // Restore EVERYTHING (Route AND Params)
+                    setHistory(newHistory);
+                    setRoute(prevState.route);
+                    setParams(prevState.params || {});
+                } else {
+                    // Push new state object to history
+                    const nextState = { route: newRoute, params: newParams };
+                    setHistory([...history, nextState]);
+                    setRoute(newRoute);
+                    setParams(newParams);
+                }
+            };
+
+            // --- DEV TOOL: User Switcher ---
+            const DevUserSwitcher = () => (
+                <div className="fixed top-0 right-0 z-[100] p-2 bg-black/80 rounded-bl-xl text-white text-xs">
+                    <select 
+                        className="bg-transparent outline-none"
+                        value={user.id}
+                        onChange={e => setUser(DEV_USERS.find(u => u.id === e.target.value))}
+                    >
+                        {DEV_USERS.map(u => <option key={u.id} value={u.id}>{u.username} ({u.isAdmin ? 'Admin' : 'User'})</option>)}
+                    </select>
+                </div>
+            );
+
+            return (
+                <AuthContext.Provider value={{ user, setUser }}>
+                    <RouterContext.Provider value={{ currentRoute: route, params, navigate }}>
+                        <DevUserSwitcher />
+                        
+                        {/* Route Switch */}
+                        <div className="max-w-md mx-auto bg-surface min-h-screen relative shadow-2xl overflow-hidden">
+                            {route === 'HOME' && <HomePage />}
+                            {route === 'SEARCH' && <SearchPage />}
+                            {route === 'EVENT_DETAILS' && <EventDetails />}
+                            {route === 'USER_PROFILE' && <UserProfile />}
+                            {route === 'PROFILE_ME' && <UserProfile />}
+                            {route === 'CREATE_EVENT' && <EventForm mode="create" />}
+                            {route === 'EDIT_EVENT' && <EventForm mode="edit" />}
+                            {route === 'REPORT' && <GenericFormPage title="Report" endpoint="/report" fieldName="text" placeholder="Describe the issue..." />}
+                            {route === 'ANNOUNCEMENT' && <GenericFormPage title="Announcement!" endpoint={`/event/${params.eventId}/announcement`} fieldName="text" placeholder="Your announcement..." />}
+                            
+                            {/* Global Nav - Only show on main screens */}
+                            {['HOME', 'SEARCH', 'USER_PROFILE', 'PROFILE_ME', 'EVENT_DETAILS', 'CREATE_EVENT', "EDIT_EVENT"].includes(route) && <BottomNav />}
+                        </div>
+
+                    </RouterContext.Provider>
+                </AuthContext.Provider>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
